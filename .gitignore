@@ -1,0 +1,26 @@
+# PlatformIO
+.pio/
+.vscode/
+.clang_complete
+.gcc-flags.json
+
+# Build artifacts
+*.o
+*.elf
+*.bin
+*.hex
+
+# IDE
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+secrets.h
