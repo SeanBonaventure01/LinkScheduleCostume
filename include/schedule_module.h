@@ -88,7 +88,7 @@ public:
     bool isServiceHours(uint16_t minuteOfDay);
 
 private:
-    Station stations_[18];  // Static allocation for 18 stations
+    Station stations_[23];  // Static allocation for 23 stations (Lynnwood City Center to Angle Lake)
     uint8_t stationCount_;
 };
 
