@@ -60,14 +60,24 @@ This document defines the software requirements and implementation specification
 **FR-TP-008:** System shall correctly handle the transition period between 01:00 AM and 05:00 AM
 
 ### 3.4 LED Display Control (FR-LED)
-**FR-LED-001:** System shall illuminate station LEDs as solid blue (RGB: 0, 0, 255)  
-**FR-LED-002:** System shall illuminate northbound trains as flashing red (RGB: 255, 0, 0)  
-**FR-LED-003:** System shall illuminate southbound trains as flashing green (RGB: 0, 255, 0)  
-**FR-LED-004:** System shall flash train LEDs at 2 Hz (500ms on, 500ms off)  
-**FR-LED-005:** System shall handle LED brightness control (configurable)  
-**FR-LED-006:** System shall update LED strip at minimum 30 fps  
-**FR-LED-007:** System shall handle overlapping trains at same LED position  
-**FR-LED-008:** System shall turn off all LEDs during non-service hours (optional feature)
+**FR-LED-001:** System shall illuminate station LEDs as solid blue (RGB: 0, 0, 255)
+**FR-LED-002:** Stations shall never flash - blue component is always on
+**FR-LED-003:** System shall illuminate northbound trains as flashing red (RGB: 255, 0, 0)
+**FR-LED-004:** System shall illuminate southbound trains as flashing green (RGB: 0, 255, 0)
+**FR-LED-005:** System shall flash train LEDs at 2 Hz (500ms on, 500ms off)
+**FR-LED-006:** System shall use additive color mixing when elements overlap at same LED
+**FR-LED-007:** System shall combine RGB values additively (e.g., red + green = yellow [255, 255, 0])
+**FR-LED-008:** Station blue component shall remain constant even when train overlaps
+**FR-LED-009:** System shall handle LED brightness control (configurable)
+**FR-LED-010:** System shall update LED strip at minimum 30 fps
+**FR-LED-011:** System shall turn off all LEDs during non-service hours (optional feature)
+
+**Color Mixing Examples:**
+- Northbound train (red) + Station (blue) = Magenta [255, 0, 255]
+- Southbound train (green) + Station (blue) = Cyan [0, 255, 255]
+- Northbound train (red) + Southbound train (green) = Yellow [255, 255, 0]
+- Northbound train (red) + Southbound train (green) + Station (blue) = White [255, 255, 255]
+- When trains flash off, only station blue remains [0, 0, 255]
 
 ### 3.5 Error Handling (FR-EH)
 **FR-EH-001:** System shall continue operation if WiFi connection fails
@@ -391,27 +401,51 @@ void setBrightness(uint8_t level) {
 }
 ```
 
-**Rendering Logic:**
+**Rendering Logic with Additive Color Mixing:**
 ```cpp
 // Pseudo-code for each frame
 clearAllLEDs();
-setStationLEDs();  // Blue LEDs at station positions
 
+// First pass: Set station base colors (always on, never flash)
+for (each station) {
+    ledBuffer[station.ledIndex].r += 0;
+    ledBuffer[station.ledIndex].g += 0;
+    ledBuffer[station.ledIndex].b += 255;  // Blue always on
+}
+
+// Update flash state for trains
 if (currentMillis - lastFlashToggle > 500) {
     flashState = !flashState;
     lastFlashToggle = currentMillis;
 }
 
+// Second pass: Add train colors (only when flash state is ON)
 if (flashState) {
-    setTrainLEDs();  // Red/Green at train positions
+    for (each active train) {
+        if (train.isNorthbound) {
+            ledBuffer[train.ledIndex].r += 255;  // Add red
+        } else {
+            ledBuffer[train.ledIndex].g += 255;  // Add green
+        }
+    }
+}
+
+// Clamp values to 255 max and update strip
+for (each LED) {
+    ledBuffer[i].r = min(ledBuffer[i].r, 255);
+    ledBuffer[i].g = min(ledBuffer[i].g, 255);
+    ledBuffer[i].b = min(ledBuffer[i].b, 255);
+    strip.setPixelColor(i, ledBuffer[i].r, ledBuffer[i].g, ledBuffer[i].b);
 }
 
 strip.show();
 ```
 
-**LED Priority (when multiple elements at same LED):**
-1. Train (flashing) - highest priority
-2. Station (solid blue)
+**Additive Color Mixing Rules:**
+- Stations always contribute blue (0, 0, 255) - never flash
+- Trains contribute red or green when flash state is ON
+- RGB values are added together and clamped to 255 maximum
+- Multiple trains at same LED combine their colors additively
 
 #### 5.2.6 Main Controller
 **Purpose:** Orchestrate all modules and manage main execution loop

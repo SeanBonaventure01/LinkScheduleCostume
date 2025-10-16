@@ -63,7 +63,7 @@ class VirtualLEDDisplay:
 
     def set_led(self, index, color, flashing=False):
         """
-        Set LED color and flashing state
+        Set LED color with additive color mixing
 
         Args:
             index: LED index (0-99)
@@ -71,8 +71,20 @@ class VirtualLEDDisplay:
             flashing: Whether this LED should flash
         """
         if 0 <= index < self.num_leds:
-            self.led_colors[index] = color
-            self.led_flashing[index] = flashing
+            # Add colors together (additive mixing)
+            r, g, b = self.led_colors[index]
+            new_r, new_g, new_b = color
+
+            # Clamp to 255 maximum
+            r = min(r + new_r, 255)
+            g = min(g + new_g, 255)
+            b = min(b + new_b, 255)
+
+            self.led_colors[index] = (r, g, b)
+
+            # Track flashing state - if any element is flashing, mark as flashing
+            if flashing:
+                self.led_flashing[index] = True
 
     def clear(self):
         """Clear all LEDs to off state"""
@@ -154,15 +166,22 @@ class VirtualLEDDisplay:
 
         # Update LED colors
         for i in range(self.num_leds):
+            r, g, b = self.led_colors[i]
+
+            # If this LED has flashing elements and flash is OFF, remove the flashing components
+            # But keep the station blue component which never flashes
             if self.led_flashing[i] and not self.flash_state:
-                # Off during flash cycle
-                color = "gray20"
+                # During flash OFF state, keep only the blue component (stations never flash)
+                # Remove red and green (train colors)
+                r = 0
+                g = 0
+                # b stays as-is (stations contribute blue which never flashes)
+
+            # Render the final color
+            if r == 0 and g == 0 and b == 0:
+                color = "gray20"  # Off
             else:
-                r, g, b = self.led_colors[i]
-                if r == 0 and g == 0 and b == 0:
-                    color = "gray20"  # Off
-                else:
-                    color = f"#{r:02x}{g:02x}{b:02x}"
+                color = f"#{r:02x}{g:02x}{b:02x}"
             self.canvas.itemconfig(self.leds[i], fill=color)
 
     def pack(self, **kwargs):

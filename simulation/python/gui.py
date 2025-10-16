@@ -141,24 +141,26 @@ class LinkRailSimulatorGUI:
         self.root.after(33, self._update_loop)
 
     def _render_display(self, trains):
-        """Render the LED display"""
+        """Render the LED display with additive color mixing"""
         # Clear display
         self.led_display.clear()
 
-        # Draw stations (blue, solid)
+        # Draw stations first (blue, never flash)
+        # Stations contribute blue (0, 0, 255) which is always on
         for i in range(self.schedule.getStationCount()):
             station = self.schedule.getStation(i)
             if station:
                 self.led_display.set_led(station.ledIndex, (0, 0, 255), flashing=False)
 
         # Draw trains (red/green, flashing)
+        # Trains add their color on top of station blue if they overlap
         for train in trains:
             if train.isActive:
                 # Northbound = red, Southbound = green
                 color = (255, 0, 0) if train.isNorthbound else (0, 255, 0)
                 self.led_display.set_led(train.ledIndex, color, flashing=True)
 
-        # Update display
+        # Update display (handles flashing logic)
         self.led_display.update()
 
     def _update_status(self, trains):
