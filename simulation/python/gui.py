@@ -32,6 +32,7 @@ class LinkRailSimulatorGUI:
         self.sim_speed = 1.0  # Speed multiplier
         self.use_system_time = True
         self.sim_time = int(time.time())
+        self.sim_time_float = float(time.time())  # Floating point time for smooth advancement
         self.last_update_time = time.time()
 
         # Create GUI components
@@ -123,21 +124,18 @@ class LinkRailSimulatorGUI:
             # Update simulation time
             if self.use_system_time:
                 self.sim_time = int(time.time())
+                self.sim_time_float = float(time.time())
             else:
-                # Advance simulation time based on speed multiplier
-                self.sim_time += int(delta_time * self.sim_speed)
+                # Advance simulation time based on speed multiplier (use float for accuracy)
+                self.sim_time_float += delta_time * self.sim_speed
+                self.sim_time = int(self.sim_time_float)
 
-            # Update train positions (C++ core)
-            self.position_engine.updateAllTrains(self.sim_time)
-
-            # Get train positions
-            trains = self.position_engine.getActiveTrainPositions()
-
-            # Update LED display
-            self._render_display(trains)
-
-            # Update status
-            self._update_status(trains)
+        # Always update train positions and display (even when stopped/paused)
+        # This ensures display updates when time or speed changes
+        self.position_engine.updateAllTrains(self.sim_time)
+        trains = self.position_engine.getActiveTrainPositions()
+        self._render_display(trains)
+        self._update_status(trains)
 
         # Schedule next update (30 fps)
         self.root.after(33, self._update_loop)
@@ -225,9 +223,28 @@ class LinkRailSimulatorGUI:
             # Use system time
             self.use_system_time = True
             self.sim_time = int(time.time())
+            self.sim_time_float = float(time.time())
             print("Using system time")
         else:
             # Use custom time
             self.use_system_time = False
-            self.sim_time = int(custom_time.timestamp())
+            timestamp = custom_time.timestamp()
+            self.sim_time = int(timestamp)
+            self.sim_time_float = float(timestamp)
+
+            # Reinitialize position engine to spawn trains for this time
+            # This clears old trains and spawns new ones based on the custom time
+            self.position_engine = link_rail_core.PositionEngine()
+            self.position_engine.init(self.schedule)
+
+            # Immediately update trains to spawn them for the new time
+            self.position_engine.updateAllTrains(self.sim_time)
+
             print(f"Custom time set to {custom_time}")
+
+            # Reset last_update_time to prevent time jump
+            self.last_update_time = time.time()
+
+            # Auto-start simulation when custom time is set
+            if not self.is_running:
+                self._start_simulation()
