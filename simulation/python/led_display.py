@@ -27,9 +27,14 @@ class VirtualLEDDisplay:
         self.flash_state = False
         self.last_flash_toggle = time.time()
 
-        # Create canvas with extra height for station labels
-        canvas_width = (led_size + spacing) * num_leds + spacing
-        canvas_height = led_size + spacing * 2 + 80  # Extra space for labels
+        # Create canvas with extra height and width for station labels
+        # Add 100px padding on left for labels extending beyond first LED
+        # Add 50px padding on right for labels extending beyond last LED
+        self.left_padding = 100
+        self.right_padding = 50
+        led_strip_width = (led_size + spacing) * num_leds + spacing
+        canvas_width = self.left_padding + led_strip_width + self.right_padding
+        canvas_height = led_size + spacing * 2 + 120  # Extra space for labels (increased from 80)
         self.canvas = Canvas(
             parent,
             width=canvas_width,
@@ -38,11 +43,11 @@ class VirtualLEDDisplay:
             highlightthickness=0
         )
 
-        # Create LED circles
+        # Create LED circles (offset by left padding)
         self.leds = []
-        y = spacing + 40  # Offset to make room for labels above
+        y = spacing + 60  # Offset to make room for labels above (increased from 40)
         for i in range(num_leds):
-            x = spacing + i * (led_size + spacing)
+            x = self.left_padding + spacing + i * (led_size + spacing)
             led = self.canvas.create_oval(
                 x, y, x + led_size, y + led_size,
                 fill="gray20", outline="gray40", width=1
@@ -87,16 +92,16 @@ class VirtualLEDDisplay:
         self.station_labels = []
 
         # Add labels for all stations
-        led_y = self.spacing + 40  # Where the LEDs are positioned
+        led_y = self.spacing + 60  # Where the LEDs are positioned (matches LED creation)
         led_center_y = led_y + self.led_size / 2
 
         for i, (led_idx, name) in enumerate(stations):
-            x = self.spacing + led_idx * (self.led_size + self.spacing) + self.led_size / 2
+            x = self.left_padding + self.spacing + led_idx * (self.led_size + self.spacing) + self.led_size / 2
 
             # Alternate labels above and below to avoid overlap
             if i % 2 == 0:
                 # Label above - angled tick mark going up-left at 45 degrees
-                tick_length = 20
+                tick_length = 30  # Increased from 20
                 tick_end_x = x - tick_length * 0.707  # cos(45°)
                 tick_end_y = led_center_y - tick_length * 0.707  # sin(45°)
 
@@ -118,7 +123,7 @@ class VirtualLEDDisplay:
                 self.station_labels.append(label)
             else:
                 # Label below - angled tick mark going down-left at 45 degrees
-                tick_length = 20
+                tick_length = 30  # Increased from 20
                 tick_end_x = x - tick_length * 0.707  # cos(45°)
                 tick_end_y = led_center_y + tick_length * 0.707  # sin(45°)
 

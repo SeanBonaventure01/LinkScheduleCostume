@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git push:*)",
       "Bash(make)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nImprove station label spacing and visibility in simulation\n\n- Increased canvas height from 80px to 120px extra space for labels\n- Moved LED strip down from y=40 to y=60 for more room above\n- Increased tick mark length from 20px to 30px for better separation\n- Added 100px left padding and 50px right padding to prevent label cutoff\n- All station labels now fully visible without clipping at edges\n- Labels positioned at 45-degree angles with proper spacing from LED strip\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
