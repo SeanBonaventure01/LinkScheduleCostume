@@ -70,11 +70,27 @@ This document defines the software requirements and implementation specification
 **FR-LED-008:** System shall turn off all LEDs during non-service hours (optional feature)
 
 ### 3.5 Error Handling (FR-EH)
-**FR-EH-001:** System shall continue operation if WiFi connection fails  
-**FR-EH-002:** System shall display status LED or serial output for diagnostics  
-**FR-EH-003:** System shall recover gracefully from LED strip communication errors  
-**FR-EH-004:** System shall handle invalid time data  
+**FR-EH-001:** System shall continue operation if WiFi connection fails
+**FR-EH-002:** System shall display status LED or serial output for diagnostics
+**FR-EH-003:** System shall recover gracefully from LED strip communication errors
+**FR-EH-004:** System shall handle invalid time data
 **FR-EH-005:** System shall provide watchdog timer protection
+
+### 3.6 PC Simulation (FR-SIM)
+**FR-SIM-001:** System shall include a host PC simulation environment
+**FR-SIM-002:** Simulation shall display a graphical representation of the LED strip
+**FR-SIM-003:** Simulation shall use system time or allow user-specified starting time
+**FR-SIM-004:** Simulation shall support adjustable time acceleration (simulation speed)
+**FR-SIM-005:** Simulation shall reuse all core logical components (Schedule Module, Position Engine, Time Manager)
+**FR-SIM-006:** Simulation shall only replace the Display Manager with a GUI-based renderer
+**FR-SIM-007:** Simulation shall maintain functional parity with embedded system behavior
+**FR-SIM-008:** Simulation shall provide controls for time manipulation and speed adjustment
+**FR-SIM-009:** Simulation shall display current simulation time and speed multiplier
+**FR-SIM-010:** Simulation shall allow pausing, resuming, and resetting the simulation
+**FR-SIM-011:** Simulation shall use Python bindings (PyBind11 or ctypes) to expose C++ core modules
+**FR-SIM-012:** Simulation GUI shall be implemented in Python using tkinter or PyQt
+**FR-SIM-013:** Core C++ modules shall be compiled as a shared library for Python import
+**FR-SIM-014:** Python GUI shall communicate with C++ core through clean API interface
 
 ---
 
@@ -551,7 +567,7 @@ Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 ### 7.4 File Structure
 ```
 project/
-├── src/
+├── src/                          // ESP32 embedded code
 │   ├── main.cpp                  // Main program entry
 │   ├── wifi_manager.cpp/h        // WiFi management
 │   ├── time_manager.cpp/h        // NTP and time tracking
@@ -559,10 +575,353 @@ project/
 │   ├── position_engine.cpp/h     // Train position logic
 │   ├── display_manager.cpp/h     // LED control
 │   └── config.h                  // Configuration constants
+├── core/                         // Shared core modules (ESP32 + Simulation)
+│   ├── schedule_module.cpp/h     // Platform-independent schedule logic
+│   ├── position_engine.cpp/h     // Platform-independent position logic
+│   └── time_utils.cpp/h          // Platform-independent time utilities
+├── simulation/                   // PC simulation
+│   ├── bindings/
+│   │   ├── pybind11_wrapper.cpp  // PyBind11 interface
+│   │   └── CMakeLists.txt        // Build configuration for shared library
+│   ├── python/
+│   │   ├── main.py               // Python GUI application entry point
+│   │   ├── gui.py                // GUI implementation (tkinter/PyQt)
+│   │   ├── led_display.py        // Virtual LED strip widget
+│   │   ├── controls.py           // Time and speed control widgets
+│   │   └── requirements.txt      // Python dependencies
+│   └── README.md                 // Simulation setup instructions
 ├── data/
 │   └── schedule.json             // Schedule data (optional)
-└── platformio.ini / Arduino sketch
+└── platformio.ini                // PlatformIO configuration
 ```
+
+### 7.5 PC Simulation Implementation
+
+#### 7.5.1 Architecture Overview
+
+The PC simulation uses a hybrid C++/Python architecture:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                Python GUI Layer (simulation/python/)     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │ GUI Controls │  │  LED Display │  │ Time Manager │  │
+│  │  (tkinter)   │  │   (Canvas)   │  │   Controls   │  │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  │
+│         │                  │                  │          │
+│         └──────────────────┼──────────────────┘          │
+│                            │                             │
+└────────────────────────────┼─────────────────────────────┘
+                             │ Python Bindings (PyBind11)
+┌────────────────────────────┼─────────────────────────────┐
+│                  C++ Core Library (.so/.dll/.dylib)      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │   Schedule   │  │   Position   │  │     Time     │  │
+│  │    Module    │  │    Engine    │  │   Utilities  │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### 7.5.2 C++ Core Library
+
+**Purpose:** Compile core logic modules as a shared library for Python
+
+**Key Components:**
+- Schedule Module (unchanged from ESP32 version)
+- Position Engine (unchanged from ESP32 version)
+- Time utilities (platform-independent time functions)
+
+**PyBind11 Interface:**
+```cpp
+// simulation/bindings/pybind11_wrapper.cpp
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include "schedule_module.h"
+#include "position_engine.h"
+
+namespace py = pybind11;
+
+PYBIND11_MODULE(link_rail_core, m) {
+    m.doc() = "Link Light Rail simulation core";
+
+    // Station struct binding
+    py::class_<Station>(m, "Station")
+        .def(py::init<>())
+        .def_readwrite("name", &Station::name)
+        .def_readwrite("ledIndex", &Station::ledIndex)
+        .def_readwrite("distanceFromStart", &Station::distanceFromStart);
+
+    // TrainPosition struct binding
+    py::class_<TrainPosition>(m, "TrainPosition")
+        .def(py::init<>())
+        .def_readwrite("ledIndex", &TrainPosition::ledIndex)
+        .def_readwrite("isNorthbound", &TrainPosition::isNorthbound)
+        .def_readwrite("isActive", &TrainPosition::isActive);
+
+    // ScheduleModule class binding
+    py::class_<ScheduleModule>(m, "ScheduleModule")
+        .def(py::init<>())
+        .def("loadSchedule", &ScheduleModule::loadSchedule)
+        .def("getStation", &ScheduleModule::getStation)
+        .def("getStationCount", &ScheduleModule::getStationCount)
+        .def("getTravelTime", &ScheduleModule::getTravelTime)
+        .def("getCurrentSchedule", &ScheduleModule::getCurrentSchedule);
+
+    // PositionEngine class binding
+    py::class_<PositionEngine>(m, "PositionEngine")
+        .def(py::init<>())
+        .def("updateAllTrains", &PositionEngine::updateAllTrains)
+        .def("getActiveTrainPositions", &PositionEngine::getActiveTrainPositions);
+}
+```
+
+**Build Configuration (CMakeLists.txt):**
+```cmake
+cmake_minimum_required(VERSION 3.12)
+project(link_rail_core)
+
+set(CMAKE_CXX_STANDARD 17)
+
+# Find Python and PyBind11
+find_package(Python COMPONENTS Interpreter Development REQUIRED)
+find_package(pybind11 REQUIRED)
+
+# Add core source files
+add_library(link_rail_core MODULE
+    pybind11_wrapper.cpp
+    ../../core/schedule_module.cpp
+    ../../core/position_engine.cpp
+    ../../core/time_utils.cpp
+)
+
+target_include_directories(link_rail_core PRIVATE
+    ../../include
+    ../../core
+)
+
+target_link_libraries(link_rail_core PRIVATE pybind11::module)
+set_target_properties(link_rail_core PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
+                                                  SUFFIX "${PYTHON_MODULE_EXTENSION}")
+```
+
+#### 7.5.3 Python GUI Implementation
+
+**Main Application (main.py):**
+```python
+#!/usr/bin/env python3
+import tkinter as tk
+from gui import LinkRailSimulatorGUI
+
+def main():
+    root = tk.Tk()
+    app = LinkRailSimulatorGUI(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
+```
+
+**GUI Structure (gui.py):**
+```python
+import tkinter as tk
+from tkinter import ttk
+import link_rail_core  # C++ module
+from led_display import VirtualLEDDisplay
+from controls import SimulationControls
+from datetime import datetime, timedelta
+import time
+
+class LinkRailSimulatorGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Link Light Rail Simulator")
+
+        # Initialize C++ core
+        self.schedule = link_rail_core.ScheduleModule()
+        self.schedule.loadSchedule()
+        self.position_engine = link_rail_core.PositionEngine()
+
+        # Simulation state
+        self.is_running = False
+        self.is_paused = False
+        self.sim_speed = 1.0  # 1x real-time
+        self.sim_time = time.time()
+        self.use_system_time = True
+
+        # Create GUI components
+        self.create_widgets()
+        self.update_loop()
+
+    def create_widgets(self):
+        # LED Display
+        self.led_display = VirtualLEDDisplay(self.root, num_leds=100)
+        self.led_display.pack(pady=20)
+
+        # Controls
+        self.controls = SimulationControls(
+            self.root,
+            on_start=self.start_simulation,
+            on_pause=self.pause_simulation,
+            on_reset=self.reset_simulation,
+            on_speed_change=self.set_speed,
+            on_time_change=self.set_time
+        )
+        self.controls.pack(pady=10)
+
+        # Status display
+        self.status_label = tk.Label(self.root, text="", font=("Arial", 12))
+        self.status_label.pack(pady=5)
+
+    def update_loop(self):
+        if self.is_running and not self.is_paused:
+            # Update simulation time
+            if self.use_system_time:
+                self.sim_time = time.time()
+            else:
+                self.sim_time += (1.0/30.0) * self.sim_speed  # 30 fps
+
+            # Update train positions (C++ core)
+            self.position_engine.updateAllTrains(int(self.sim_time))
+
+            # Get train positions
+            trains = self.position_engine.getActiveTrainPositions()
+
+            # Update LED display
+            self.led_display.clear()
+            self.draw_stations()
+            self.draw_trains(trains)
+            self.led_display.update()
+
+            # Update status
+            current_time = datetime.fromtimestamp(self.sim_time)
+            self.status_label.config(
+                text=f"Time: {current_time.strftime('%Y-%m-%d %H:%M:%S')} | "
+                     f"Speed: {self.sim_speed}x | Trains: {len(trains)}"
+            )
+
+        # Schedule next update (30 fps)
+        self.root.after(33, self.update_loop)
+
+    def draw_stations(self):
+        for i in range(self.schedule.getStationCount()):
+            station = self.schedule.getStation(i)
+            self.led_display.set_led(station.ledIndex, (0, 0, 255))  # Blue
+
+    def draw_trains(self, trains):
+        for train in trains:
+            if train.isActive:
+                color = (255, 0, 0) if train.isNorthbound else (0, 255, 0)
+                self.led_display.set_led(train.ledIndex, color, flashing=True)
+```
+
+**Virtual LED Display (led_display.py):**
+```python
+import tkinter as tk
+from tkinter import Canvas
+import time
+
+class VirtualLEDDisplay:
+    def __init__(self, parent, num_leds=100, led_size=8, spacing=2):
+        self.num_leds = num_leds
+        self.led_size = led_size
+        self.spacing = spacing
+        self.flash_state = False
+        self.last_flash_toggle = time.time()
+
+        # Create canvas
+        canvas_width = (led_size + spacing) * num_leds + spacing
+        canvas_height = led_size + spacing * 2
+        self.canvas = Canvas(parent, width=canvas_width, height=canvas_height, bg="black")
+
+        # Create LED circles
+        self.leds = []
+        for i in range(num_leds):
+            x = spacing + i * (led_size + spacing)
+            y = spacing
+            led = self.canvas.create_oval(
+                x, y, x + led_size, y + led_size,
+                fill="gray20", outline="gray40"
+            )
+            self.leds.append(led)
+
+        # LED state storage
+        self.led_colors = [(0, 0, 0)] * num_leds
+        self.led_flashing = [False] * num_leds
+
+    def set_led(self, index, color, flashing=False):
+        if 0 <= index < self.num_leds:
+            self.led_colors[index] = color
+            self.led_flashing[index] = flashing
+
+    def clear(self):
+        self.led_colors = [(0, 0, 0)] * self.num_leds
+        self.led_flashing = [False] * self.num_leds
+
+    def update(self):
+        # Toggle flash state every 500ms
+        current_time = time.time()
+        if current_time - self.last_flash_toggle > 0.5:
+            self.flash_state = not self.flash_state
+            self.last_flash_toggle = current_time
+
+        # Update LED colors
+        for i in range(self.num_leds):
+            if self.led_flashing[i] and not self.flash_state:
+                color = "gray20"  # Off during flash
+            else:
+                r, g, b = self.led_colors[i]
+                color = f"#{r:02x}{g:02x}{b:02x}"
+            self.canvas.itemconfig(self.leds[i], fill=color)
+
+    def pack(self, **kwargs):
+        self.canvas.pack(**kwargs)
+```
+
+#### 7.5.4 Build and Run Instructions
+
+**Setup:**
+```bash
+# Install dependencies
+pip install pybind11 tkinter
+
+# Build C++ shared library
+cd simulation/bindings
+mkdir build && cd build
+cmake ..
+make
+
+# Copy library to Python directory
+cp link_rail_core.* ../../python/
+
+# Run simulation
+cd ../../python
+python main.py
+```
+
+**Requirements (requirements.txt):**
+```
+pybind11>=2.10.0
+tkinter
+```
+
+#### 7.5.5 Simulation Features
+
+**Time Controls:**
+- System time mode: Use real computer time
+- Custom time mode: Set specific starting time
+- Speed control: 1x, 2x, 5x, 10x, 60x (1 minute = 1 second)
+
+**Playback Controls:**
+- Play/Pause: Start and pause simulation
+- Reset: Return to initial state
+- Step: Advance by single time increment
+
+**Display Features:**
+- 100 virtual LEDs displayed horizontally
+- Station indicators (blue, solid)
+- Northbound trains (red, flashing)
+- Southbound trains (green, flashing)
+- Real-time train count and time display
 
 ---
 

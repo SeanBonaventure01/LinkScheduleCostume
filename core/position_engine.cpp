@@ -1,4 +1,5 @@
 #include "position_engine.h"
+#include <iostream>
 
 PositionEngine::PositionEngine()
     : scheduleModule_(nullptr),
@@ -13,7 +14,7 @@ void PositionEngine::init(ScheduleModule* scheduleModule) {
         trains_[i].isActive = false;
     }
 
-    Serial.println("[PositionEngine] init() - stub");
+    std::cout << "[PositionEngine] Initialized" << std::endl;
 }
 
 void PositionEngine::updateAllTrains(time_t currentTime) {
@@ -136,7 +137,6 @@ uint8_t PositionEngine::mapPositionToLED(float position) {
 }
 
 const TrainPosition* PositionEngine::getActiveTrainPositions(uint8_t* count) {
-    // TODO: Implement get active positions
     *count = activeTrainCount_;
     return trainPositions_;
 }
@@ -155,49 +155,60 @@ void PositionEngine::spawnNewTrains(time_t currentTime) {
     uint16_t minuteOfDay = scheduleModule_->getCurrentMinuteOfDay(currentTime);
     uint8_t stationCount = scheduleModule_->getStationCount();
 
+    // Calculate total route time to know how far back to check for active trains
+    uint16_t totalRouteTime = scheduleModule_->getTravelTime(0, stationCount - 1);
+    uint16_t routeTimeMinutes = (totalRouteTime + 59) / 60;  // Round up to minutes
+
     // For each potential train departure
-    // We'll check if a train should be spawned from the first or last station
+    // We'll check if a train should be spawned or is already in transit
 
     // Northbound trains (start at station 0)
-    // Calculate how many trains should have departed by now
+    // Spawn all trains that should currently be in transit
     if (minuteOfDay >= schedule->firstTrainMinutes) {
-        uint16_t minutesSinceFirst = minuteOfDay - schedule->firstTrainMinutes;
-        uint16_t trainNumber = minutesSinceFirst / schedule->headwayMinutes;
+        // Check trains that departed in the last [route time] to see if they're still in transit
+        for (uint16_t checkMinute = schedule->firstTrainMinutes; checkMinute <= minuteOfDay && checkMinute <= schedule->lastTrainMinutes; checkMinute += schedule->headwayMinutes) {
+            // Calculate how long ago this train departed
+            uint16_t minutesSinceDeparture = minuteOfDay - checkMinute;
 
-        // Check if we should spawn a train for this departure time
-        uint16_t thisTrainDepartureMinute = schedule->firstTrainMinutes + (trainNumber * schedule->headwayMinutes);
+            // Skip if train has completed route
+            if (minutesSinceDeparture * 60 >= totalRouteTime) {
+                continue;
+            }
 
-        // Only spawn if departure was within the last minute (to avoid spawning on every update)
-        if (thisTrainDepartureMinute == minuteOfDay) {
-            // Find an inactive train slot
-            for (uint8_t i = 0; i < 20; i++) {
-                if (!trains_[i].isActive) {
-                    // Check if we don't already have a train with this exact departure time and direction
-                    bool alreadyExists = false;
-                    time_t thisDepartureTime = currentTime - (minuteOfDay % 60) * 60 + thisTrainDepartureMinute * 60;
+            // Calculate proper departure time
+            struct tm* timeinfo = localtime(&currentTime);
+            if (timeinfo != nullptr) {
+                timeinfo->tm_hour = checkMinute / 60;
+                timeinfo->tm_min = checkMinute % 60;
+                timeinfo->tm_sec = 0;
+                time_t thisDepartureTime = mktime(timeinfo);
 
-                    for (uint8_t j = 0; j < 20; j++) {
-                        if (trains_[j].isActive &&
-                            trains_[j].isNorthbound &&
-                            trains_[j].departureTime == thisDepartureTime) {
-                            alreadyExists = true;
+                // Check if we already have this train
+                bool alreadyExists = false;
+                for (uint8_t j = 0; j < 20; j++) {
+                    if (trains_[j].isActive &&
+                        trains_[j].isNorthbound &&
+                        trains_[j].departureTime == thisDepartureTime) {
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+
+                if (!alreadyExists) {
+                    // Find an inactive train slot
+                    for (uint8_t i = 0; i < 20; i++) {
+                        if (!trains_[i].isActive) {
+                            trains_[i].id = i;
+                            trains_[i].isNorthbound = true;
+                            trains_[i].currentStation = 0;
+                            trains_[i].nextStation = 1;
+                            trains_[i].progress = 0.0;
+                            trains_[i].departureTime = thisDepartureTime;
+                            trains_[i].isActive = true;
+                            std::cout << "[PositionEngine] Spawned northbound train ID " << (int)i
+                                      << " departing at minute " << checkMinute << std::endl;
                             break;
                         }
-                    }
-
-                    if (!alreadyExists && thisTrainDepartureMinute <= schedule->lastTrainMinutes) {
-                        trains_[i].id = i;
-                        trains_[i].isNorthbound = true;
-                        trains_[i].currentStation = 0;
-                        trains_[i].nextStation = 1;
-                        trains_[i].progress = 0.0;
-                        trains_[i].departureTime = thisDepartureTime;
-                        trains_[i].isActive = true;
-                        Serial.print("[PositionEngine] Spawned northbound train ID ");
-                        Serial.print(i);
-                        Serial.print(" at minute ");
-                        Serial.println(thisTrainDepartureMinute);
-                        break;
                     }
                 }
             }
@@ -208,39 +219,50 @@ void PositionEngine::spawnNewTrains(time_t currentTime) {
     // Add 15 minute offset for southbound trains (typical stagger)
     uint16_t southboundFirstTrain = schedule->firstTrainMinutes + 15;
     if (minuteOfDay >= southboundFirstTrain) {
-        uint16_t minutesSinceFirst = minuteOfDay - southboundFirstTrain;
-        uint16_t trainNumber = minutesSinceFirst / schedule->headwayMinutes;
+        // Check trains that departed in the last [route time] to see if they're still in transit
+        for (uint16_t checkMinute = southboundFirstTrain; checkMinute <= minuteOfDay && checkMinute <= schedule->lastTrainMinutes; checkMinute += schedule->headwayMinutes) {
+            // Calculate how long ago this train departed
+            uint16_t minutesSinceDeparture = minuteOfDay - checkMinute;
 
-        uint16_t thisTrainDepartureMinute = southboundFirstTrain + (trainNumber * schedule->headwayMinutes);
+            // Skip if train has completed route
+            if (minutesSinceDeparture * 60 >= totalRouteTime) {
+                continue;
+            }
 
-        if (thisTrainDepartureMinute == minuteOfDay) {
-            for (uint8_t i = 0; i < 20; i++) {
-                if (!trains_[i].isActive) {
-                    bool alreadyExists = false;
-                    time_t thisDepartureTime = currentTime - (minuteOfDay % 60) * 60 + thisTrainDepartureMinute * 60;
+            // Calculate proper departure time
+            struct tm* timeinfo = localtime(&currentTime);
+            if (timeinfo != nullptr) {
+                timeinfo->tm_hour = checkMinute / 60;
+                timeinfo->tm_min = checkMinute % 60;
+                timeinfo->tm_sec = 0;
+                time_t thisDepartureTime = mktime(timeinfo);
 
-                    for (uint8_t j = 0; j < 20; j++) {
-                        if (trains_[j].isActive &&
-                            !trains_[j].isNorthbound &&
-                            trains_[j].departureTime == thisDepartureTime) {
-                            alreadyExists = true;
+                // Check if we already have this train
+                bool alreadyExists = false;
+                for (uint8_t j = 0; j < 20; j++) {
+                    if (trains_[j].isActive &&
+                        !trains_[j].isNorthbound &&
+                        trains_[j].departureTime == thisDepartureTime) {
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+
+                if (!alreadyExists) {
+                    // Find an inactive train slot
+                    for (uint8_t i = 0; i < 20; i++) {
+                        if (!trains_[i].isActive) {
+                            trains_[i].id = i;
+                            trains_[i].isNorthbound = false;
+                            trains_[i].currentStation = stationCount - 1;
+                            trains_[i].nextStation = stationCount - 2;
+                            trains_[i].progress = 0.0;
+                            trains_[i].departureTime = thisDepartureTime;
+                            trains_[i].isActive = true;
+                            std::cout << "[PositionEngine] Spawned southbound train ID " << (int)i
+                                      << " departing at minute " << checkMinute << std::endl;
                             break;
                         }
-                    }
-
-                    if (!alreadyExists && thisTrainDepartureMinute <= schedule->lastTrainMinutes) {
-                        trains_[i].id = i;
-                        trains_[i].isNorthbound = false;
-                        trains_[i].currentStation = stationCount - 1;
-                        trains_[i].nextStation = stationCount - 2;
-                        trains_[i].progress = 0.0;
-                        trains_[i].departureTime = thisDepartureTime;
-                        trains_[i].isActive = true;
-                        Serial.print("[PositionEngine] Spawned southbound train ID ");
-                        Serial.print(i);
-                        Serial.print(" at minute ");
-                        Serial.println(thisTrainDepartureMinute);
-                        break;
                     }
                 }
             }

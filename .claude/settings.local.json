@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(platformio run:*)"
+      "Bash(git push:*)",
+      "Bash(make)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []
