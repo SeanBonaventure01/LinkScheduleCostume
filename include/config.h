@@ -2,9 +2,9 @@
 #define CONFIG_H
 
 // WiFi Configuration
-#define WIFI_SSID "YourPhoneHotspot"
-#define WIFI_PASSWORD "password"
-#define WIFI_RECONNECT_INTERVAL 30000  // 30 seconds
+#define WIFI_SSID "seans-iphone"
+#define WIFI_PASSWORD "link-halloween25"
+#define WIFI_CONNECT_TIMEOUT 10000     // 10 seconds timeout for connection
 
 // NTP Configuration
 #define NTP_SERVER "pool.ntp.org"

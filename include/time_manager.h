@@ -47,6 +47,11 @@ public:
     void update();
 
 private:
+    /**
+     * Set default fallback time (8:00 AM)
+     */
+    void setDefaultTime();
+
     time_t lastSyncTime_;
     uint32_t lastSyncMillis_;
     bool isSynced_;
