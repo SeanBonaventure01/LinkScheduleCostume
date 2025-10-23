@@ -53,12 +53,18 @@ void DisplayManager::setStationLEDs() {
 }
 
 void DisplayManager::setTrainLEDs(const TrainPosition* trains, uint8_t count) {
-    // Only render trains when flash state is ON
-    if (!flashState_) {
-        return;  // During flash OFF, don't add train colors
-    }
+    // Calculate breathing pulse brightness using sine wave
+    // Breathing cycle: 2000ms (0.5 Hz) - smooth acceleration/deceleration
+    unsigned long currentMillis = millis();
+    float timeInCycle = (currentMillis % BREATHING_CYCLE_MS) / (float)BREATHING_CYCLE_MS;
 
-    // Render trains with additive color mixing
+    // Sine wave breathing: smooth at extremes, faster in middle
+    // Map from sine wave (-1 to +1) to brightness range (0.05 to 1.0)
+    // This keeps LEDs slightly visible even at minimum brightness
+    float sinValue = sin(timeInCycle * 2.0f * PI - PI / 2.0f);
+    float brightness = 0.05f + (sinValue + 1.0f) / 2.0f * 0.95f;  // Range: 0.05 to 1.0
+
+    // Render trains with additive color mixing and breathing brightness
     for (uint8_t i = 0; i < count; i++) {
         if (trains[i].isActive) {
             uint8_t ledIndex = trains[i].ledIndex;
@@ -69,16 +75,23 @@ void DisplayManager::setTrainLEDs(const TrainPosition* trains, uint8_t count) {
                 uint8_t g = (currentColor >> 8) & 0xFF;
                 uint8_t b = currentColor & 0xFF;
 
-                // Add train color (red for northbound, green for southbound)
+                // Calculate train color with brightness applied
+                uint8_t trainR = 0;
+                uint8_t trainG = 0;
+
                 if (trains[i].isNorthbound) {
-                    // Northbound = red
-                    r = (r + NORTH_TRAIN_R > 255) ? 255 : (r + NORTH_TRAIN_R);
+                    // Northbound = red with breathing
+                    trainR = (uint8_t)(NORTH_TRAIN_R * brightness);
                 } else {
-                    // Southbound = green
-                    g = (g + SOUTH_TRAIN_G > 255) ? 255 : (g + SOUTH_TRAIN_G);
+                    // Southbound = green with breathing
+                    trainG = (uint8_t)(SOUTH_TRAIN_G * brightness);
                 }
 
-                // Set the combined color (additive mixing)
+                // Add train color (additive mixing with clamping)
+                r = (r + trainR > 255) ? 255 : (r + trainR);
+                g = (g + trainG > 255) ? 255 : (g + trainG);
+
+                // Set the combined color
                 strip_.setPixelColor(ledIndex, strip_.Color(r, g, b));
             }
         }
@@ -86,14 +99,8 @@ void DisplayManager::setTrainLEDs(const TrainPosition* trains, uint8_t count) {
 }
 
 void DisplayManager::updateDisplay() {
-    // Update flash state (2 Hz = 500ms interval)
-    unsigned long currentMillis = millis();
-    if (currentMillis - lastFlashToggle_ >= FLASH_INTERVAL) {
-        flashState_ = !flashState_;
-        lastFlashToggle_ = currentMillis;
-    }
-
     // Update the physical LED strip
+    // Note: Pulse brightness is calculated in setTrainLEDs() based on millis()
     strip_.show();
 }
 

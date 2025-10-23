@@ -38,6 +38,7 @@ This document defines the software requirements and implementation specification
 **FR-TS-004:** System shall maintain time using internal RTC when WiFi disconnected  
 **FR-TS-005:** System shall store last successful sync timestamp  
 **FR-TS-006:** System shall apply Pacific Time Zone offset (UTC-8/UTC-7 with DST)
+**FR-TS-007:** The wifi ssid will be link-costum and password will be link-halloween25
 
 ### 3.2 Schedule Management (FR-SM)
 **FR-SM-001:** System shall store complete Link Light Rail timetable  
@@ -64,13 +65,14 @@ This document defines the software requirements and implementation specification
 **FR-LED-002:** Stations shall never flash - blue component is always on
 **FR-LED-003:** System shall illuminate northbound trains as flashing red (RGB: 255, 0, 0)
 **FR-LED-004:** System shall illuminate southbound trains as flashing green (RGB: 0, 255, 0)
-**FR-LED-005:** System shall flash train LEDs at 2 Hz (500ms on, 500ms off)
+**FR-LED-005:** System shall flash train LEDs at 0.5Hz
 **FR-LED-006:** System shall use additive color mixing when elements overlap at same LED
 **FR-LED-007:** System shall combine RGB values additively (e.g., red + green = yellow [255, 255, 0])
 **FR-LED-008:** Station blue component shall remain constant even when train overlaps
 **FR-LED-009:** System shall handle LED brightness control (configurable)
 **FR-LED-010:** System shall update LED strip at minimum 30 fps
 **FR-LED-011:** System shall turn off all LEDs during non-service hours (optional feature)
+**FR-LED-012:** The system shall flash the LEDs in a "breathing" pattern using sine wave interpolation for smooth, natural breathing. The breathing cycle shall use the formula `brightness = (sin(time * 2π / period - π/2) + 1) / 2` which creates smooth acceleration/deceleration at the extremes (0% and 100% brightness) and faster transitions in the middle. This mimics natural breathing and eliminates the jarring transitions of linear interpolation.
 
 **Color Mixing Examples:**
 - Northbound train (red) + Station (blue) = Magenta [255, 0, 255]

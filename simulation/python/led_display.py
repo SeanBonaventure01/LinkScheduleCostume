@@ -158,24 +158,29 @@ class VirtualLEDDisplay:
 
     def update(self):
         """Update LED display (call every frame)"""
-        # Toggle flash state every 500ms (2 Hz)
+        # Calculate breathing brightness using sine wave for smooth breathing
+        # 2000ms cycle (0.5 Hz) - smooth acceleration/deceleration
+        import math
         current_time = time.time()
-        if current_time - self.last_flash_toggle > 0.5:
-            self.flash_state = not self.flash_state
-            self.last_flash_toggle = current_time
+        time_in_cycle = ((current_time * 1000) % 2000) / 2000.0  # 0.0 to 1.0
+
+        # Sine wave breathing: smooth at extremes, faster in middle
+        # Map from sine wave (-1 to +1) to brightness range (0.05 to 1.0)
+        sin_value = math.sin(time_in_cycle * 2.0 * math.pi - math.pi / 2.0)
+        brightness = 0.05 + (sin_value + 1.0) / 2.0 * 0.95  # Range: 0.05 to 1.0
 
         # Update LED colors
         for i in range(self.num_leds):
             r, g, b = self.led_colors[i]
 
-            # If this LED has flashing elements and flash is OFF, remove the flashing components
-            # But keep the station blue component which never flashes
-            if self.led_flashing[i] and not self.flash_state:
-                # During flash OFF state, keep only the blue component (stations never flash)
-                # Remove red and green (train colors)
-                r = 0
-                g = 0
-                # b stays as-is (stations contribute blue which never flashes)
+            # If this LED has flashing elements, apply breathing brightness
+            # But keep the station blue component which never breathes
+            if self.led_flashing[i]:
+                # Apply brightness to train colors (red and green) only
+                # Blue (station color) stays at full brightness
+                r = int(r * brightness)
+                g = int(g * brightness)
+                # b stays as-is (stations never breathe)
 
             # Render the final color
             if r == 0 and g == 0 and b == 0:

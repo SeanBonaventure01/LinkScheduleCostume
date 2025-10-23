@@ -13,12 +13,12 @@
 
 // LED Configuration
 #define NUM_LEDS 100
-#define LED_PIN 5
-#define LED_BRIGHTNESS 128              // 0-255
+#define LED_PIN 32                      // GPIO 32 (D32) - WS2812B data line
+#define LED_BRIGHTNESS 64               // 0-255
 #define FRAME_RATE 30
 
 // Train Configuration
-#define FLASH_INTERVAL 500              // milliseconds
+#define BREATHING_CYCLE_MS 2000         // Breathing cycle: 1000ms fade up + 1000ms fade down (0.5 Hz)
 #define TRAIN_UPDATE_INTERVAL 1000      // milliseconds
 
 // Color definitions (RGB values for NeoPixel)
