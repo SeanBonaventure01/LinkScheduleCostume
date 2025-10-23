@@ -167,25 +167,31 @@ void PositionEngine::spawnNewTrains(time_t currentTime) {
         // Check if we should spawn a train for this departure time
         uint16_t thisTrainDepartureMinute = schedule->firstTrainMinutes + (trainNumber * schedule->headwayMinutes);
 
-        // Only spawn if departure was within the last minute (to avoid spawning on every update)
-        if (thisTrainDepartureMinute == minuteOfDay) {
-            // Find an inactive train slot
-            for (uint8_t i = 0; i < 20; i++) {
-                if (!trains_[i].isActive) {
-                    // Check if we don't already have a train with this exact departure time and direction
-                    bool alreadyExists = false;
-                    time_t thisDepartureTime = currentTime - (minuteOfDay % 60) * 60 + thisTrainDepartureMinute * 60;
+        // Only spawn if we're within the same minute as departure (handles all seconds 0-59)
+        if (thisTrainDepartureMinute == minuteOfDay && thisTrainDepartureMinute <= schedule->lastTrainMinutes) {
+            // Calculate departure time properly (start of day + minutes)
+            struct tm* timeinfo = localtime(&currentTime);
+            struct tm departureTimeInfo = *timeinfo;
+            departureTimeInfo.tm_hour = thisTrainDepartureMinute / 60;
+            departureTimeInfo.tm_min = thisTrainDepartureMinute % 60;
+            departureTimeInfo.tm_sec = 0;
+            time_t thisDepartureTime = mktime(&departureTimeInfo);
 
-                    for (uint8_t j = 0; j < 20; j++) {
-                        if (trains_[j].isActive &&
-                            trains_[j].isNorthbound &&
-                            trains_[j].departureTime == thisDepartureTime) {
-                            alreadyExists = true;
-                            break;
-                        }
-                    }
+            // Check if we don't already have a train with this exact departure time and direction
+            bool alreadyExists = false;
+            for (uint8_t j = 0; j < 20; j++) {
+                if (trains_[j].isActive &&
+                    trains_[j].isNorthbound &&
+                    trains_[j].departureTime == thisDepartureTime) {
+                    alreadyExists = true;
+                    break;
+                }
+            }
 
-                    if (!alreadyExists && thisTrainDepartureMinute <= schedule->lastTrainMinutes) {
+            if (!alreadyExists) {
+                // Find an inactive train slot
+                for (uint8_t i = 0; i < 20; i++) {
+                    if (!trains_[i].isActive) {
                         trains_[i].id = i;
                         trains_[i].isNorthbound = true;
                         trains_[i].currentStation = 0;
@@ -213,22 +219,31 @@ void PositionEngine::spawnNewTrains(time_t currentTime) {
 
         uint16_t thisTrainDepartureMinute = southboundFirstTrain + (trainNumber * schedule->headwayMinutes);
 
-        if (thisTrainDepartureMinute == minuteOfDay) {
-            for (uint8_t i = 0; i < 20; i++) {
-                if (!trains_[i].isActive) {
-                    bool alreadyExists = false;
-                    time_t thisDepartureTime = currentTime - (minuteOfDay % 60) * 60 + thisTrainDepartureMinute * 60;
+        // Only spawn if we're within the same minute as departure (handles all seconds 0-59)
+        if (thisTrainDepartureMinute == minuteOfDay && thisTrainDepartureMinute <= schedule->lastTrainMinutes) {
+            // Calculate departure time properly (start of day + minutes)
+            struct tm* timeinfo = localtime(&currentTime);
+            struct tm departureTimeInfo = *timeinfo;
+            departureTimeInfo.tm_hour = thisTrainDepartureMinute / 60;
+            departureTimeInfo.tm_min = thisTrainDepartureMinute % 60;
+            departureTimeInfo.tm_sec = 0;
+            time_t thisDepartureTime = mktime(&departureTimeInfo);
 
-                    for (uint8_t j = 0; j < 20; j++) {
-                        if (trains_[j].isActive &&
-                            !trains_[j].isNorthbound &&
-                            trains_[j].departureTime == thisDepartureTime) {
-                            alreadyExists = true;
-                            break;
-                        }
-                    }
+            // Check if we don't already have a train with this exact departure time and direction
+            bool alreadyExists = false;
+            for (uint8_t j = 0; j < 20; j++) {
+                if (trains_[j].isActive &&
+                    !trains_[j].isNorthbound &&
+                    trains_[j].departureTime == thisDepartureTime) {
+                    alreadyExists = true;
+                    break;
+                }
+            }
 
-                    if (!alreadyExists && thisTrainDepartureMinute <= schedule->lastTrainMinutes) {
+            if (!alreadyExists) {
+                // Find an inactive train slot
+                for (uint8_t i = 0; i < 20; i++) {
+                    if (!trains_[i].isActive) {
                         trains_[i].id = i;
                         trains_[i].isNorthbound = false;
                         trains_[i].currentStation = stationCount - 1;

@@ -12,6 +12,10 @@ void ScheduleModule::loadSchedule() {
 
     stationCount_ = 23;
 
+    // Evenly distribute 23 stations across 100 LEDs (0-99)
+    // Spacing: ~4.5 LEDs per station (99 / 22 gaps = 4.5)
+    // Keep actual distances for travel time calculations
+
     // Station 0: Lynnwood City Center
     strncpy(stations_[0].name, "Lynnwood City Center", 31);
     stations_[0].name[31] = '\0';
@@ -21,127 +25,127 @@ void ScheduleModule::loadSchedule() {
     // Station 1: Mountlake Terrace
     strncpy(stations_[1].name, "Mountlake Terrace", 31);
     stations_[1].name[31] = '\0';
-    stations_[1].ledIndex = 7;
+    stations_[1].ledIndex = 4;
     stations_[1].distanceFromStart = 3.0;
 
     // Station 2: Shoreline North / 185th
     strncpy(stations_[2].name, "Shoreline North/185th", 31);
     stations_[2].name[31] = '\0';
-    stations_[2].ledIndex = 13;
+    stations_[2].ledIndex = 9;
     stations_[2].distanceFromStart = 6.0;
 
     // Station 3: Shoreline South / 148th
     strncpy(stations_[3].name, "Shoreline South/148th", 31);
     stations_[3].name[31] = '\0';
-    stations_[3].ledIndex = 18;
+    stations_[3].ledIndex = 13;
     stations_[3].distanceFromStart = 8.0;
 
     // Station 4: Northgate
     strncpy(stations_[4].name, "Northgate", 31);
     stations_[4].name[31] = '\0';
-    stations_[4].ledIndex = 22;
+    stations_[4].ledIndex = 18;
     stations_[4].distanceFromStart = 10.0;
 
     // Station 5: Roosevelt
     strncpy(stations_[5].name, "Roosevelt", 31);
     stations_[5].name[31] = '\0';
-    stations_[5].ledIndex = 28;
+    stations_[5].ledIndex = 22;
     stations_[5].distanceFromStart = 12.4;
 
     // Station 6: U District
     strncpy(stations_[6].name, "U District", 31);
     stations_[6].name[31] = '\0';
-    stations_[6].ledIndex = 31;
+    stations_[6].ledIndex = 27;
     stations_[6].distanceFromStart = 13.8;
 
     // Station 7: University of Washington
     strncpy(stations_[7].name, "University of Washington", 31);
     stations_[7].name[31] = '\0';
-    stations_[7].ledIndex = 34;
+    stations_[7].ledIndex = 31;
     stations_[7].distanceFromStart = 15.2;
 
     // Station 8: Capitol Hill
     strncpy(stations_[8].name, "Capitol Hill", 31);
     stations_[8].name[31] = '\0';
-    stations_[8].ledIndex = 39;
+    stations_[8].ledIndex = 36;
     stations_[8].distanceFromStart = 17.5;
 
     // Station 9: Westlake
     strncpy(stations_[9].name, "Westlake", 31);
     stations_[9].name[31] = '\0';
-    stations_[9].ledIndex = 44;
+    stations_[9].ledIndex = 40;
     stations_[9].distanceFromStart = 19.8;
 
     // Station 10: Symphony
     strncpy(stations_[10].name, "Symphony", 31);
     stations_[10].name[31] = '\0';
-    stations_[10].ledIndex = 46;
+    stations_[10].ledIndex = 45;
     stations_[10].distanceFromStart = 20.5;
 
     // Station 11: Pioneer Square
     strncpy(stations_[11].name, "Pioneer Square", 31);
     stations_[11].name[31] = '\0';
-    stations_[11].ledIndex = 47;
+    stations_[11].ledIndex = 49;
     stations_[11].distanceFromStart = 21.2;
 
     // Station 12: Int'l District / Chinatown
     strncpy(stations_[12].name, "Intl Dist/Chinatown", 31);
     stations_[12].name[31] = '\0';
-    stations_[12].ledIndex = 49;
+    stations_[12].ledIndex = 54;
     stations_[12].distanceFromStart = 21.9;
 
     // Station 13: Stadium
     strncpy(stations_[13].name, "Stadium", 31);
     stations_[13].name[31] = '\0';
-    stations_[13].ledIndex = 51;
+    stations_[13].ledIndex = 58;
     stations_[13].distanceFromStart = 23.0;
 
     // Station 14: SODO
     strncpy(stations_[14].name, "SODO", 31);
     stations_[14].name[31] = '\0';
-    stations_[14].ledIndex = 55;
+    stations_[14].ledIndex = 63;
     stations_[14].distanceFromStart = 24.8;
 
     // Station 15: Beacon Hill
     strncpy(stations_[15].name, "Beacon Hill", 31);
     stations_[15].name[31] = '\0';
-    stations_[15].ledIndex = 60;
+    stations_[15].ledIndex = 67;
     stations_[15].distanceFromStart = 26.9;
 
     // Station 16: Mount Baker
     strncpy(stations_[16].name, "Mount Baker", 31);
     stations_[16].name[31] = '\0';
-    stations_[16].ledIndex = 65;
+    stations_[16].ledIndex = 72;
     stations_[16].distanceFromStart = 29.2;
 
     // Station 17: Columbia City
     strncpy(stations_[17].name, "Columbia City", 31);
     stations_[17].name[31] = '\0';
-    stations_[17].ledIndex = 70;
+    stations_[17].ledIndex = 76;
     stations_[17].distanceFromStart = 31.5;
 
     // Station 18: Othello
     strncpy(stations_[18].name, "Othello", 31);
     stations_[18].name[31] = '\0';
-    stations_[18].ledIndex = 75;
+    stations_[18].ledIndex = 81;
     stations_[18].distanceFromStart = 33.8;
 
     // Station 19: Rainier Beach
     strncpy(stations_[19].name, "Rainier Beach", 31);
     stations_[19].name[31] = '\0';
-    stations_[19].ledIndex = 80;
+    stations_[19].ledIndex = 85;
     stations_[19].distanceFromStart = 36.1;
 
     // Station 20: Tukwila Int'l Blvd
     strncpy(stations_[20].name, "Tukwila Intl Blvd", 31);
     stations_[20].name[31] = '\0';
-    stations_[20].ledIndex = 89;
+    stations_[20].ledIndex = 90;
     stations_[20].distanceFromStart = 40.0;
 
     // Station 21: SeaTac / Airport
     strncpy(stations_[21].name, "SeaTac/Airport", 31);
     stations_[21].name[31] = '\0';
-    stations_[21].ledIndex = 96;
+    stations_[21].ledIndex = 94;
     stations_[21].distanceFromStart = 43.0;
 
     // Station 22: Angle Lake
